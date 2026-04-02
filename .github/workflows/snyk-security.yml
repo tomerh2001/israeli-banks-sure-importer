@@ -1,67 +1,65 @@
-# In order to use the Snyk Action you will need to have a Snyk API token.
-# More details in https://github.com/snyk/actions#getting-your-snyk-token
-# or you can signup for free at https://snyk.io/login
-
 name: Snyk Security
 
 on:
   push:
-    branches: ["main" ]
+    branches:
+      - main
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
 
 permissions:
   contents: read
 
 jobs:
   snyk:
-    permissions:
-      contents: read # for actions/checkout to fetch code
-      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
+      - name: Check Snyk configuration
+        id: snyk-gate
+        run: |
+          if [ -n "$SNYK_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: ${{ steps.snyk-gate.outputs.enabled == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: ${{ steps.snyk-gate.outputs.enabled == 'true' }}
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-      
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      
+          node-version: 24
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Enable Corepack
+        if: ${{ steps.snyk-gate.outputs.enabled == 'true' }}
+        run: corepack enable
+
       - name: Install Dependencies
-        run: bun i --dev
-        
-      - name: Set up Snyk CLI to check for security issues      
+        if: ${{ steps.snyk-gate.outputs.enabled == 'true' }}
+        run: yarn install --immutable
+
+      - name: Set up Snyk CLI
+        if: ${{ steps.snyk-gate.outputs.enabled == 'true' }}
         uses: snyk/actions/setup@cdb760004ba9ea4d525f2e043745dfe85bb9077e
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      
-      - name: Snyk version
-        run: echo "${{ steps.snyk.outputs.version }}"
-      
-      - name: Snyk Test 
-        run: snyk test
+
+      - name: Scan dependencies
+        if: ${{ steps.snyk-gate.outputs.enabled == 'true' }}
+        run: snyk test --all-projects
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      - name: Build a Docker image
-        run: docker build -t your/image-to-test .
-      - name: Run Snyk to check Docker image for vulnerabilities
-        # Snyk can be used to break the build when it detects vulnerabilities.
-        # In this case we want to upload the issues to GitHub Code Scanning
-        continue-on-error: true
-        uses: snyk/actions/docker@master
-        env:
-          # In order to use the Snyk Action you will need to have a Snyk API token.
-          # More details in https://github.com/snyk/actions#getting-your-snyk-token
-          # or you can signup for free at https://snyk.io/login
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          image: your/image-to-test
-          args: --file=Dockerfile
-      - name: Upload result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk.sarif
+      - name: Explain skip
+        if: ${{ steps.snyk-gate.outputs.enabled != 'true' }}
+        run: echo "Skipping Snyk scan because SNYK_TOKEN is not configured for this repository."

@@ -43,8 +43,7 @@ jobs:
       pull-requests: write
       id-token: write
     env:
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
       DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
       DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
     steps:
@@ -52,8 +51,6 @@ jobs:
         id: release-gate
         run: |
           missing=()
-          [[ -n "$GH_TOKEN" ]] || missing+=("GH_TOKEN")
-          [[ -n "$NPM_TOKEN" ]] || missing+=("NPM_TOKEN")
           [[ -n "$DOCKER_REGISTRY_USER" ]] || missing+=("DOCKER_REGISTRY_USER")
           [[ -n "$DOCKER_REGISTRY_PASSWORD" ]] || missing+=("DOCKER_REGISTRY_PASSWORD")
 
@@ -84,8 +81,6 @@ jobs:
       - name: Install Dependencies
         if: ${{ steps.release-gate.outputs.enabled == 'true' }}
         run: yarn install --immutable
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Make repo writable for BuildKit
         if: ${{ steps.release-gate.outputs.enabled == 'true' }}
@@ -95,8 +90,7 @@ jobs:
         if: ${{ steps.release-gate.outputs.enabled == 'true' }}
         run: yarn semantic-release
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.server_url }}/${{ github.repository }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}

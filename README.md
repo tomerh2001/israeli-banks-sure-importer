@@ -119,6 +119,14 @@ services:
       - ./chrome-data:/app/chrome-data
 ```
 
+## CI/CD Docker Publishing
+
+GitHub Actions validates every push and pull request, then runs semantic-release on `main` and `develop`.
+
+- The release job publishes the Docker image `tomerh2001/israeli-banks-sure-importer`
+- It uses the built-in GitHub Actions token for GitHub release/tag work
+- It only requires Docker Hub secrets: `DOCKER_REGISTRY_USER` and `DOCKER_REGISTRY_PASSWORD`
+
 ## Local Run
 
 ```bash

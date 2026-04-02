@@ -1,282 +1,115 @@
-# Israeli Banks → Actual Budget
-[![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-[![XO code style](https://shields.io/badge/code_style-5ed9c7?logo=xo&labelColor=gray)](https://github.com/xojs/xo)
-[![Snyk Security](../../actions/workflows/snyk-security.yml/badge.svg)](../../actions/workflows/snyk-security.yml)
-[![CodeQL](../../actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://www.bestpractices.dev/projects/10403/badge)](https://www.bestpractices.dev/projects/10403)
+# Israeli Banks Sure Importer
 
-This project provides an importer from Israeli banks (via [israeli-bank-scrapers](https://github.com/eshaham/israeli-bank-scrapers)) into [Actual Budget](https://github.com/actualbudget/actual).
+`israeli-banks-sure-importer` is a standalone Israeli bank transaction exporter powered by [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers).
 
-## Features
+This fork is intentionally no longer tied to Actual Budget. It logs into supported Israeli banks, scrapes account activity, and writes normalized account snapshots to disk as JSON, CSV, or both.
 
-1. **Multi Bank Support**  
-   Supports all of the institutions that the [israeli-bank-scrapers](https://github.com/eshaham/israeli-bank-scrapers) library covers (Bank Hapoalim, Cal, Leumi, Discount, etc.).
+## What It Does
 
-2. **Prevents duplicate transactions**  
-   Uses Actual’s [`imported_id`](https://actualbudget.org/docs/api/reference/#transactions) logic.
+- Scrapes supported Israeli banks and credit-card providers through `israeli-bank-scrapers`
+- Exports one file per scraped account under a stable output directory
+- Supports JSON, CSV, or JSON+CSV output
+- Works as a one-shot run or on a cron schedule inside Docker
 
-3. **Automatic Account Creation**  
-   If the bank account does not exist in Actual, it will be created automatically.
+## Output Layout
 
-4. **Reconciliation**  
-   Optional reconciliation to adjust account balances automatically.
+Each run writes or refreshes files under the configured `output.directory`.
 
-5. **Credit Card / Multi-Account Mapping (Targets)**  
-   Supports mapping multiple scraped accounts/cards into one Actual account, or mapping each scraped card into its own Actual account (via `targets` and `accounts`).
-
-6. **Concurrent Processing**  
-   Uses a queue (via [p-queue](https://www.npmjs.com/package/p-queue)) to manage scraping tasks concurrently.
-
-## Installation
-
-### Docker
-https://hub.docker.com/r/tomerh2001/israeli-banks-actual-budget-importer
-
-#### Example
-```yml
-services:
-  importer:
-    image: tomerh2001/israeli-banks-actual-budget-importer:latest
-    restart: always
-    cap_add:
-      - SYS_ADMIN
-    environment:
-      - TZ=Asia/Jerusalem
-      - SCHEDULE=0 0 * * * # Optional (Used to run periodically - remove to run once)
-    volumes:
-      - ./config.json:/app/config.json
-      - ./cache:/app/cache # Optional
-      - ./chrome-data:/app/chrome-data # Optional (Used to solve 2FA issues like with hapoalim)
+```text
+output/
+  index.json
+  leumi/
+    123456789.json
+    123456789.csv
+  cal/
+    8538.json
+    8538.csv
 ```
+
+- `index.json` contains the top-level run summary.
+- Each account file contains the latest normalized snapshot for that bank account.
 
 ## Configuration
 
-The application configuration is defined using JSON and validated against a schema.  
-The main configuration file is `config.json`.
-
-The configuration has **two independent top-level sections**:
-1. `actual` – Configures the Actual Budget connection.
-2. `banks` – Configures bank scrapers and account mappings.
-
----
-
-### 1) `actual` section
-
-This section configures the connection to your Actual Budget server and budget.  
-It is **always required**, regardless of how you configure banks or targets.
+Create a `config.json` file in the project root and validate it against [`config.schema.json`](./config.schema.json).
 
 ```json
 {
-  "actual": {
-    "init": {
-      "dataDir": "./data",
-      "password": "your_actual_password",
-      "serverURL": "https://your-actual-server.com"
-    },
-    "budget": {
-      "syncId": "your_sync_id",
-      "password": "your_budget_password"
-    }
-  }
-}
-```
-
-Nothing in this block changes when using `targets`, credit cards, or multi-account mappings.
-
----
-
-### 2) `banks` section
-
-The `banks` section defines:
-- Which banks to scrape
-- The credentials for each bank
-- How scraped accounts/cards are mapped into Actual accounts
-
-Each bank entry includes the credentials required by `israeli-bank-scrapers`
-(e.g. `userCode`, `username`, `password`, etc.).
-
----
-
-### `targets` sub-section
-
-A single bank scrape (for example `visaCal`) may return **multiple accounts/cards**.  
-Different users model these differently in Actual, so the importer supports `targets`.
-
-Each **target** represents:
-- One Actual account
-- One or more scraped accounts/cards that feed into it
-
-For each target:
-- Imported transactions = concatenation of transactions from selected cards
-- Reconciliation (if enabled) = sum of balances of selected cards  
-  (only cards with a valid numeric balance are included)
-
----
-
-### Reconciliation behavior
-
-- Reconciliation is controlled by the `reconcile` boolean.
-- When `reconcile: true`, **a new reconciliation transaction is created on every run** (no updates, no reconciliation).
-- Existing reconciliation transactions are never modified or reused.
-- If `reconcile` is omitted or set to `false`, no reconciliation transaction is created.
-
----
-
-### Example A: One Actual account for all VisaCal cards
-
-```json
-{
-  "actual": {
-    "init": {
-      "dataDir": "./data",
-      "password": "your_actual_password",
-      "serverURL": "https://your-actual-server.com"
-    },
-    "budget": {
-      "syncId": "your_sync_id",
-      "password": "your_budget_password"
-    }
+  "output": {
+    "directory": "./output",
+    "format": "json-and-csv",
+    "pretty": true
   },
   "banks": {
-    "visaCal": {
-      "username": "bank_username",
-      "password": "bank_password",
-      "targets": [
-        {
-          "actualAccountId": "actual-creditcards-all",
-          "reconcile": true,
-          "accounts": "all"
-        }
-      ]
-    }
-  }
-}
-```
-
----
-
-### Example B: One Actual account per VisaCal card
-
-```json
-{
-  "actual": {
-    "init": {
-      "dataDir": "./data",
-      "password": "your_actual_password",
-      "serverURL": "https://your-actual-server.com"
-    },
-    "budget": {
-      "syncId": "your_sync_id",
-      "password": "your_budget_password"
-    }
-  },
-  "banks": {
-    "visaCal": {
-      "username": "bank_username",
-      "password": "bank_password",
-      "targets": [
-        {
-          "actualAccountId": "actual-card-8538",
-          "reconcile": true,
-          "accounts": ["8538"]
-        },
-        {
-          "actualAccountId": "actual-card-7697",
-          "reconcile": true,
-          "accounts": ["7697"]
-        }
-      ]
-    }
-  }
-}
-```
-
----
-
-### Example C: Grouped cards into a single Actual account (subset)
-
-```json
-{
-  "actual": {
-    "init": {
-      "dataDir": "./data",
-      "password": "your_actual_password",
-      "serverURL": "https://your-actual-server.com"
-    },
-    "budget": {
-      "syncId": "your_sync_id",
-      "password": "your_budget_password"
-    }
-  },
-  "banks": {
-    "visaCal": {
-      "username": "bank_username",
-      "password": "bank_password",
-      "targets": [
-        {
-          "actualAccountId": "actual-cal-primary",
-          "reconcile": true,
-          "accounts": ["8538", "7697"]
-        }
-      ]
-    }
-  }
-}
-```
-
----
-
-## Legacy configuration (single Actual account per bank)
-
-This configuration style is **fully supported for backward compatibility**,  
-but does **not** allow fine-grained control over multiple cards/accounts.
-
-It maps all scraped accounts from the bank into a single Actual account.
-
-```json
-{
-  "actual": {
-    "init": {
-      "dataDir": "./data",
-      "password": "your_actual_password",
-      "serverURL": "https://your-actual-server.com"
-    },
-    "budget": {
-      "syncId": "your_sync_id",
-      "password": "your_budget_password"
-    }
-  },
-  "banks": {
-    "hapoalim": {
-      "actualAccountId": "account-123",
-      "userCode": "bank_user",
-      "password": "bank_password",
-      "reconcile": true
-    },
     "leumi": {
-      "actualAccountId": "account-456",
-      "username": "bank_username",
-      "password": "bank_password"
+      "username": "your-username",
+      "password": "your-password",
+      "accounts": "all"
+    },
+    "cal": {
+      "userCode": "123456789",
+      "password": "your-password",
+      "accounts": [
+        "8538",
+        "7697"
+      ]
     }
   }
 }
 ```
 
----
+### Bank Entries
 
-## Notes
+Each bank entry keeps the credential shape expected by `israeli-bank-scrapers`, plus two optional fields:
 
-- The `actual` block is **always required** and independent of bank configuration.
-- `targets` are optional but strongly recommended for credit-card providers.
-- Duplicate transactions are prevented using a stable `imported_id`.
-- Credit card balances are often negative; reconciliation uses the values as returned by the bank.
+- `alias`: optional folder/display name override for the bank
+- `accounts`: `"all"` or a list of account numbers to export
 
-## License
+Supported company IDs and credential combinations come from the upstream scraper project:
+https://github.com/eshaham/israeli-bank-scrapers
 
-This project is open-source. Please see the [LICENSE](./LICENSE) file for licensing details.
+### Output Settings
 
-## Acknowledgments
+- `directory`: required base directory for exported files
+- `format`: `json`, `csv`, or `json-and-csv`
+- `pretty`: pretty-print JSON output when `true`
 
-- **israeli-bank-scrapers:** Thanks to the contributors of the bank scraper libraries.
-- **Actual App:** For providing a powerful budgeting API.
-- **Open-source Community:** Your support and contributions are appreciated.
+## Environment Overrides
+
+- `SCHEDULE`: cron expression for recurring runs
+- `TIMEOUT`: scraper timeout in minutes, defaults to `15`
+- `CONFIG_PATH`: optional path to a config file, defaults to `./config.json`
+- `OUTPUT_DIRECTORY`: overrides `output.directory`
+- `OUTPUT_FORMAT`: overrides `output.format`
+- `OUTPUT_PRETTY`: overrides `output.pretty`
+- `SHOW_BROWSER`: set to `true` to run the browser visibly
+- `VERBOSE`: set to `true` for verbose scraper logs
+
+## Docker Compose
+
+```yaml
+services:
+  israeli-banks-sure-importer:
+    image: tomerh2001/israeli-banks-sure-importer:latest
+    restart: always
+    environment:
+      - TZ=Asia/Jerusalem
+      # - SCHEDULE=0 */6 * * *
+      # - OUTPUT_DIRECTORY=/app/output
+      # - OUTPUT_FORMAT=json-and-csv
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./output:/app/output
+      - ./chrome-data:/app/chrome-data
+```
+
+## Local Run
+
+```bash
+yarn install
+yarn start
+```
+
+## Migration Note
+
+This project was forked from `israeli-banks-actual-budget-importer` but is not backward compatible with that configuration format. The old `actual` block and account-target mapping were removed on purpose so the fork is clearly a standalone exporter.

@@ -132,12 +132,10 @@ dist
 # Credentials
 credentials.json
 artifacts
-config.ts
 config.json
 
-# Actual
-My-Finances-*
 cache
+output
 
 # Chrome
 chrome-data

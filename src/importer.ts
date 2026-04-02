@@ -327,8 +327,19 @@ async function reconcileTarget({
 		notes: `Reconciled by israeli-banks-sure-importer from ${sureBalance} to ${scrapedBalance}`,
 	});
 
+	const settledBalance = await sure.settleAccountBalance(sureAccount.id, scrapedBalance);
+	if (!settledBalance.matched) {
+		const observedBalance = settledBalance.observedBalance ?? 'an unknown balance';
+		return {
+			message: `Created a Sure reconciliation from ${sureBalance} to ${scrapedBalance}, but Sure still reports ${observedBalance} after the follow-up sync.`,
+			reconciled: true,
+		};
+	}
+
 	return {
-		message: `Reconciled Sure balance from ${sureBalance} to ${scrapedBalance}.`,
+		message: settledBalance.triggeredSync
+			? `Reconciled Sure balance from ${sureBalance} to ${scrapedBalance} and confirmed it after a follow-up Sure sync.`
+			: `Reconciled Sure balance from ${sureBalance} to ${scrapedBalance}.`,
 		reconciled: true,
 	};
 }

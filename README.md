@@ -140,3 +140,4 @@ yarn start
 - Imported transaction notes also preserve the scraper memo, source bank, source account, and useful source metadata such as pending status or installment details.
 - Merchant matching is exact-name only against merchants that already exist in Sure.
 - Category matching is exact-name unless you override it with `categoryMap`.
+- When `reconcile` is enabled, the importer now waits for Sure to reflect the valuation and triggers one follow-up Sure sync if the balance cache is still stale after the transaction import finishes.

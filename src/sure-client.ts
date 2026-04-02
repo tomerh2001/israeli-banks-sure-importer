@@ -5,6 +5,7 @@ import {
 	extractImportedId,
 	importMarkerLabel,
 	normalizeLookupKey,
+	parseFormattedMoney,
 	stripUndefined,
 } from './importer.utils.js';
 
@@ -107,6 +108,28 @@ type SureValuationCreateInput = {
 	date: string;
 	notes: string;
 };
+
+type SureSync = {
+	completed_at?: string;
+	id: string;
+	message: string;
+	status: string;
+	syncable_id: string;
+	syncable_type: string;
+	syncing_at?: string;
+	window_end_date?: string;
+	window_start_date?: string;
+};
+
+type SureBalanceSettlement = {
+	matched: boolean;
+	observedBalance?: number;
+	triggeredSync: boolean;
+};
+
+const balanceTolerance = 0.005;
+const reconciliationSettleDelayMs = 2000;
+const reconciliationPollIntervalMs = 1000;
 
 export class SureClient {
 	readonly defaultTagRefs: string[];
@@ -274,6 +297,56 @@ export class SureClient {
 		});
 	}
 
+	async settleAccountBalance(accountId: string, expectedBalance: number): Promise<SureBalanceSettlement> {
+		const initialBalance = await this.getParsedAccountBalance(accountId, {refresh: true});
+		if (matchesBalance(initialBalance, expectedBalance)) {
+			return {
+				matched: true,
+				observedBalance: initialBalance,
+				triggeredSync: false,
+			};
+		}
+
+		await delay(reconciliationSettleDelayMs);
+		const settledBalance = await this.getParsedAccountBalance(accountId, {refresh: true});
+		if (matchesBalance(settledBalance, expectedBalance)) {
+			return {
+				matched: true,
+				observedBalance: settledBalance,
+				triggeredSync: false,
+			};
+		}
+
+		await this.request<SureSync>('/api/v1/sync', {
+			method: 'POST',
+		});
+
+		const deadline = Date.now() + Math.max(this.config.timeoutMs, 30_000);
+		let observedBalance = settledBalance;
+		while (Date.now() <= deadline) {
+			await delay(reconciliationPollIntervalMs);
+			observedBalance = await this.getParsedAccountBalance(accountId, {refresh: true});
+			if (matchesBalance(observedBalance, expectedBalance)) {
+				return {
+					matched: true,
+					observedBalance,
+					triggeredSync: true,
+				};
+			}
+		}
+
+		return {
+			matched: false,
+			observedBalance,
+			triggeredSync: true,
+		};
+	}
+
+	private async getParsedAccountBalance(accountId: string, options?: {refresh?: boolean}) {
+		const account = await this.getAccountById(accountId, options);
+		return parseFormattedMoney(account?.balance);
+	}
+
 	private async findTag(reference: string) {
 		const tags = await this.getTags();
 		return tags.find(tag => tag.id === reference || normalizeLookupKey(tag.name) === normalizeLookupKey(reference));
@@ -353,6 +426,16 @@ export class SureClient {
 
 		return `Sure API ${pathname} failed (${status}): ${candidates.join(' | ') || 'Unknown error'}`;
 	}
+}
+
+function matchesBalance(observedBalance: number | undefined, expectedBalance: number) {
+	return observedBalance !== undefined && Math.abs(observedBalance - expectedBalance) < balanceTolerance;
+}
+
+async function delay(ms: number) {
+	await new Promise(resolve => {
+		setTimeout(resolve, ms);
+	});
 }
 
 function readString(value: unknown) {

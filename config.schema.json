@@ -1,0 +1,562 @@
+{
+  "$ref": "#/definitions/Config",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Config": {
+      "additionalProperties": false,
+      "properties": {
+        "actual": {
+          "$ref": "#/definitions/ConfigActual"
+        },
+        "banks": {
+          "$ref": "#/definitions/ConfigBanks"
+        }
+      },
+      "required": [
+        "banks",
+        "actual"
+      ],
+      "type": "object"
+    },
+    "ConfigActual": {
+      "additionalProperties": false,
+      "properties": {
+        "budget": {
+          "$ref": "#/definitions/ConfigActualBudget"
+        },
+        "init": {
+          "$ref": "#/definitions/InitConfig"
+        }
+      },
+      "required": [
+        "init",
+        "budget"
+      ],
+      "type": "object"
+    },
+    "ConfigActualBudget": {
+      "additionalProperties": false,
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "syncId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "syncId",
+        "password"
+      ],
+      "type": "object"
+    },
+    "AccountsSelector": {
+      "anyOf": [
+        {
+          "const": "all"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "ReconcileOption": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "const": "consolidate"
+        }
+      ]
+    },
+    "ConfigBankTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "actualAccountId": {
+          "type": "string"
+        },
+        "reconcile": {
+          "$ref": "#/definitions/ReconcileOption"
+        },
+        "accounts": {
+          "$ref": "#/definitions/AccountsSelector"
+        }
+      },
+      "required": [
+        "actualAccountId"
+      ],
+      "type": "object"
+    },
+    "ConfigBankMappingLegacy": {
+      "type": "object",
+      "properties": {
+        "actualAccountId": {
+          "type": "string"
+        },
+        "reconcile": {
+          "$ref": "#/definitions/ReconcileOption"
+        }
+      },
+      "required": [
+        "actualAccountId"
+      ]
+    },
+    "ConfigBankMappingTargets": {
+      "type": "object",
+      "properties": {
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ConfigBankTarget"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "targets"
+      ]
+    },
+    "ConfigBank": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "userCode": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "actualAccountId": {
+              "type": "string"
+            },
+            "reconcile": {
+              "$ref": "#/definitions/ReconcileOption"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigBankTarget"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "password",
+            "userCode"
+          ],
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ConfigBankMappingLegacy"
+                },
+                {
+                  "$ref": "#/definitions/ConfigBankMappingTargets"
+                }
+              ]
+            }
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "actualAccountId": {
+              "type": "string"
+            },
+            "reconcile": {
+              "$ref": "#/definitions/ReconcileOption"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigBankTarget"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "password",
+            "username"
+          ],
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ConfigBankMappingLegacy"
+                },
+                {
+                  "$ref": "#/definitions/ConfigBankMappingTargets"
+                }
+              ]
+            }
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "actualAccountId": {
+              "type": "string"
+            },
+            "reconcile": {
+              "$ref": "#/definitions/ReconcileOption"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigBankTarget"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "id",
+            "password"
+          ],
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ConfigBankMappingLegacy"
+                },
+                {
+                  "$ref": "#/definitions/ConfigBankMappingTargets"
+                }
+              ]
+            }
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "num": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "actualAccountId": {
+              "type": "string"
+            },
+            "reconcile": {
+              "$ref": "#/definitions/ReconcileOption"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigBankTarget"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "id",
+            "num",
+            "password"
+          ],
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ConfigBankMappingLegacy"
+                },
+                {
+                  "$ref": "#/definitions/ConfigBankMappingTargets"
+                }
+              ]
+            }
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "card6Digits": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "actualAccountId": {
+              "type": "string"
+            },
+            "reconcile": {
+              "$ref": "#/definitions/ReconcileOption"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigBankTarget"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "id",
+            "card6Digits",
+            "password"
+          ],
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ConfigBankMappingLegacy"
+                },
+                {
+                  "$ref": "#/definitions/ConfigBankMappingTargets"
+                }
+              ]
+            }
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "nationalID": {
+              "type": "string"
+            },
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "actualAccountId": {
+              "type": "string"
+            },
+            "reconcile": {
+              "$ref": "#/definitions/ReconcileOption"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigBankTarget"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "nationalID",
+            "username",
+            "password"
+          ],
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ConfigBankMappingLegacy"
+                },
+                {
+                  "$ref": "#/definitions/ConfigBankMappingTargets"
+                }
+              ]
+            }
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "phoneNumber": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "otpCodeRetriever": {
+              "$comment": "() => Promise<string>"
+            },
+            "actualAccountId": {
+              "type": "string"
+            },
+            "reconcile": {
+              "$ref": "#/definitions/ReconcileOption"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigBankTarget"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "email",
+            "otpCodeRetriever",
+            "password",
+            "phoneNumber"
+          ],
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ConfigBankMappingLegacy"
+                },
+                {
+                  "$ref": "#/definitions/ConfigBankMappingTargets"
+                }
+              ]
+            }
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "otpLongTermToken": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "actualAccountId": {
+              "type": "string"
+            },
+            "reconcile": {
+              "$ref": "#/definitions/ReconcileOption"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigBankTarget"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "email",
+            "otpLongTermToken",
+            "password"
+          ],
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ConfigBankMappingLegacy"
+                },
+                {
+                  "$ref": "#/definitions/ConfigBankMappingTargets"
+                }
+              ]
+            }
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ConfigBanks": {
+      "additionalProperties": false,
+      "properties": {
+        "amex": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "behatsdaa": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "beinleumi": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "beyahadBishvilha": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "discount": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "hapoalim": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "hapoalimBeOnline": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "isracard": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "leumi": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "leumiCard": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "massad": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "max": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "mercantile": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "mizrahi": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "oneZero": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "otsarHahayal": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "pagi": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "union": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "visaCal": {
+          "$ref": "#/definitions/ConfigBank"
+        },
+        "yahav": {
+          "$ref": "#/definitions/ConfigBank"
+        }
+      },
+      "type": "object"
+    },
+    "InitConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "dataDir": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "serverURL": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  }
+}

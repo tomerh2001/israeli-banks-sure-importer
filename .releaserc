@@ -1,6 +1,11 @@
 {
     "branches": [
-        "main"
+        "main",
+        {
+            "name": "develop",
+            "prerelease": "beta",
+            "channel": "beta"
+        }
     ],
     "plugins": [
         "@semantic-release/commit-analyzer",
@@ -9,34 +14,8 @@
         "@semantic-release/changelog",
         "@semantic-release/git",
         "@semantic-release/github",
-        [
-            "@codedependant/semantic-release-docker",
-            {
-                "dockerTags": [
-                    "latest",
-                    "{{version}}",
-                    "{{major}}",
-                    "{{major}}.{{minor}}"
-                ],
-                "dockerLogin": false,
-                "dockerRegistry": "ghcr.io",
-                "dockerProject": "tomerh2001",
-                "dockerArgs": {
-                    "GH_REPO": "{{env.GH_REPO}}"
-                }
-            }
-        ],
-        [
-            "@codedependant/semantic-release-docker",
-            {
-                "dockerTags": [
-                    "latest",
-                    "{{version}}",
-                    "{{major}}",
-                    "{{major}}.{{minor}}"
-                ],
-                "dockerProject": "tomerh2001"
-            }
-        ]
+        ["@codedependant/semantic-release-docker", {
+            "dockerImage": "tomerh2001/israeli-banks-actual-budget-importer"
+        }]
     ]
 }

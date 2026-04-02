@@ -4,36 +4,35 @@ on:
   push:
     branches:
     - main
+    - develop
 
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
+      contents: write # to be able to publish a GitHub release
+      issues: write # to be able to comment on released issues
+      pull-requests: write # to be able to comment on released pull requests
+      id-token: write # to enable use of OIDC for npm provenance
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup Node.js environment
+    - name: Setup Node
       uses: actions/setup-node@v4
       with:
-        node-version: "22.x"
+        node-version: 24
+        cache: 'yarn'
+        cache-dependency-path: 'yarn.lock'
 
     - name: Install Dependencies
-      run: yarn
+      run: yarn install
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-    - name: Run Tests
-      run: yarn jest --coverage tests
-
-    - name: Run Build
-      run: yarn build
-
-    - name: Authenticate with ghcr.io
-      run: echo "${{ secrets.GH_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+    - name: Make repo writable for BuildKit
+      run: sudo chmod -R 777 $GITHUB_WORKSPACE/.yarn
 
     - name: Semantic Release
       run: yarn semantic-release

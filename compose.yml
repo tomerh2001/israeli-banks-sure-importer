@@ -1,0 +1,18 @@
+services:
+  israeli-banks-actual-budget-importer:
+    image: tomerh2001/israeli-banks-actual-budget-importer:latest
+    container_name: israeli-banks-actual-budget-importer
+    cap_add:
+      - SYS_ADMIN
+    platform: linux/amd64
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - TZ=Asia/Jerusalem
+      # - SCHEDULE=0 */6 * * *
+    volumes:
+      - ./config.json:/app/config.json
+      - ./cache:/app/cache
+      - ./chrome-data:/app/chrome-data

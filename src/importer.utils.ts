@@ -77,6 +77,46 @@ export function toStringOrUndefined(value: unknown) {
 	return undefined;
 }
 
+export function normalizeCurrencyCode(value: string | undefined) {
+	if (!value) {
+		return undefined;
+	}
+
+	const normalized = value.trim().toUpperCase();
+	if (/^[A-Z]{3}$/.test(normalized)) {
+		return normalized;
+	}
+
+	switch (normalized) {
+		case '$': {
+			return 'USD';
+		}
+
+		case '₪':
+		case 'NIS':
+		case 'ILS(₪)': {
+			return 'ILS';
+		}
+
+		case '€': {
+			return 'EUR';
+		}
+
+		case '£': {
+			return 'GBP';
+		}
+
+		case 'USDOLLAR':
+		case 'US DOLLAR': {
+			return 'USD';
+		}
+
+		default: {
+			return undefined;
+		}
+	}
+}
+
 export function normalizeLookupKey(value: string) {
 	return value.trim().toLocaleLowerCase('en-US');
 }

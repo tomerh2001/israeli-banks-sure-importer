@@ -11,6 +11,7 @@ import moment from 'moment';
 import type {ConfigBank, ConfigBankTarget} from './config.js';
 import {
 	buildImportedTransactionNotes,
+	normalizeCurrencyCode,
 	normalizeDate,
 	parseFormattedMoney,
 	selectScraperAccounts,
@@ -213,6 +214,15 @@ function buildSureTransaction({
 	const chargedAmount = toNumberOrUndefined(transaction.chargedAmount);
 	const date = normalizeDate(transaction.date);
 	const name = toStringOrUndefined(transaction.description);
+	const status = toStringOrUndefined(transaction.status);
+
+	if (status?.toLowerCase() === 'pending') {
+		log(companyId, 'TRANSACTION_SKIPPED_PENDING', {
+			accountNumber,
+			description: transaction.description,
+		});
+		return undefined;
+	}
 
 	if (chargedAmount === undefined || date === undefined || name === undefined) {
 		log(companyId, 'TRANSACTION_SKIPPED_INVALID', {
@@ -226,6 +236,7 @@ function buildSureTransaction({
 	const processedDate = normalizeDate(transaction.processedDate);
 	const originalAmount = toNumberOrUndefined(transaction.originalAmount);
 	const originalCurrency = toStringOrUndefined(transaction.originalCurrency);
+	const chargedCurrency = toStringOrUndefined(transaction.chargedCurrency);
 	const installmentNumber = toNumberOrUndefined(transaction.installments?.number);
 	const installmentCount = toNumberOrUndefined(transaction.installments?.total);
 
@@ -239,18 +250,20 @@ function buildSureTransaction({
 		originalAmount,
 		originalCurrency,
 		processedDate,
-		status: toStringOrUndefined(transaction.status),
+		status,
 		transactionDate: date,
 	});
 
 	return {
 		amount: Math.abs(chargedAmount),
 		category: toStringOrUndefined(transaction.category),
-		currency: toStringOrUndefined(transaction.chargedCurrency) ?? originalCurrency ?? accountCurrency,
+		currency: normalizeCurrencyCode(chargedCurrency)
+			?? normalizeCurrencyCode(originalCurrency)
+			?? normalizeCurrencyCode(accountCurrency),
 		date,
 		importedId,
 		name,
-		nature: chargedAmount < 0 ? 'income' : 'expense',
+		nature: chargedAmount < 0 ? 'expense' : 'income',
 		notes,
 	};
 }

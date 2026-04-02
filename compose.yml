@@ -12,9 +12,8 @@ services:
     environment:
       - TZ=Asia/Jerusalem
       # - SCHEDULE=0 */6 * * *
-      # - OUTPUT_DIRECTORY=/app/output
-      # - OUTPUT_FORMAT=json-and-csv
+      # - SURE_BASE_URL=https://sure.example.com
+      # - SURE_API_KEY=replace-me
     volumes:
       - ./config.json:/app/config.json:ro
-      - ./output:/app/output
       - ./chrome-data:/app/chrome-data

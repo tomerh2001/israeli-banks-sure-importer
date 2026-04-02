@@ -7,14 +7,14 @@
       "additionalProperties": false,
       "required": [
         "banks",
-        "output"
+        "sure"
       ],
       "properties": {
         "banks": {
           "$ref": "#/definitions/ConfigBanks"
         },
-        "output": {
-          "$ref": "#/definitions/ConfigOutput"
+        "sure": {
+          "$ref": "#/definitions/ConfigSure"
         }
       }
     },
@@ -24,31 +24,35 @@
         "$ref": "#/definitions/ConfigBank"
       }
     },
-    "ConfigOutput": {
+    "ConfigSure": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "directory"
+        "apiKey",
+        "baseUrl"
       ],
       "properties": {
-        "directory": {
+        "apiKey": {
           "type": "string"
         },
-        "format": {
-          "$ref": "#/definitions/OutputFormat"
+        "baseUrl": {
+          "type": "string",
+          "format": "uri"
         },
-        "pretty": {
+        "createMissingTags": {
           "type": "boolean"
+        },
+        "defaultTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1
         }
       }
-    },
-    "OutputFormat": {
-      "type": "string",
-      "enum": [
-        "json",
-        "csv",
-        "json-and-csv"
-      ]
     },
     "AccountsSelector": {
       "anyOf": [
@@ -64,12 +68,89 @@
         }
       ]
     },
+    "TargetCategoryMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "ConfigBankTargetById": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sureAccountId"
+      ],
+      "properties": {
+        "sureAccountId": {
+          "type": "string"
+        },
+        "accounts": {
+          "$ref": "#/definitions/AccountsSelector"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "categoryMap": {
+          "$ref": "#/definitions/TargetCategoryMap"
+        },
+        "reconcile": {
+          "type": "boolean"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ConfigBankTargetByName": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sureAccountName"
+      ],
+      "properties": {
+        "sureAccountName": {
+          "type": "string"
+        },
+        "accounts": {
+          "$ref": "#/definitions/AccountsSelector"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "categoryMap": {
+          "$ref": "#/definitions/TargetCategoryMap"
+        },
+        "reconcile": {
+          "type": "boolean"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ConfigBankTarget": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ConfigBankTargetById"
+        },
+        {
+          "$ref": "#/definitions/ConfigBankTargetByName"
+        }
+      ]
+    },
     "ConfigBankUserCode": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "userCode",
-        "password"
+        "password",
+        "targets",
+        "userCode"
       ],
       "properties": {
         "userCode": {
@@ -81,8 +162,16 @@
         "alias": {
           "type": "string"
         },
-        "accounts": {
-          "$ref": "#/definitions/AccountsSelector"
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/ConfigBankTarget"
+          }
         }
       }
     },
@@ -90,8 +179,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "username",
-        "password"
+        "password",
+        "targets",
+        "username"
       ],
       "properties": {
         "username": {
@@ -103,8 +193,16 @@
         "alias": {
           "type": "string"
         },
-        "accounts": {
-          "$ref": "#/definitions/AccountsSelector"
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/ConfigBankTarget"
+          }
         }
       }
     },
@@ -113,7 +211,8 @@
       "additionalProperties": false,
       "required": [
         "id",
-        "password"
+        "password",
+        "targets"
       ],
       "properties": {
         "id": {
@@ -125,8 +224,16 @@
         "alias": {
           "type": "string"
         },
-        "accounts": {
-          "$ref": "#/definitions/AccountsSelector"
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/ConfigBankTarget"
+          }
         }
       }
     },
@@ -136,7 +243,8 @@
       "required": [
         "id",
         "num",
-        "password"
+        "password",
+        "targets"
       ],
       "properties": {
         "id": {
@@ -151,8 +259,16 @@
         "alias": {
           "type": "string"
         },
-        "accounts": {
-          "$ref": "#/definitions/AccountsSelector"
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/ConfigBankTarget"
+          }
         }
       }
     },

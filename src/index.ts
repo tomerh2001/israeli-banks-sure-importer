@@ -1,69 +1,73 @@
+/* eslint-disable no-await-in-loop */
 /* eslint-disable unicorn/no-process-exit */
 
 import process from 'node:process';
-import {mkdir, readFile, writeFile} from 'node:fs/promises';
+import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {type CompanyTypes} from '@tomerh2001/israeli-bank-scrapers';
-import Queue from 'p-queue';
 import moment from 'moment';
 import cron, {type ScheduledTask, validate} from 'node-cron';
 import cronstrue from 'cronstrue';
-import type {Config, ConfigBank} from './config.js';
-import {type BankExportSummary, scrapeAndExportTransactions} from './exporter.js';
-import {resolveOutputConfig} from './exporter.utils.js';
+import {resolveSureConfig, type Config, type ConfigBank} from './config.js';
+import {type BankImportSummary, scrapeAndImportTransactions} from './importer.js';
+import {SureClient} from './sure-client.js';
 
 let scheduledTask: ScheduledTask | undefined;
 
 async function run() {
 	const typedConfig = await loadConfig();
-	const queue = new Queue({
-		concurrency: 10,
-		autoStart: true,
-		interval: 1000,
-		intervalCap: 10,
-	});
-	const output = resolveOutputConfig(typedConfig.output);
-	await mkdir(output.directory, {recursive: true});
+	const sure = new SureClient(resolveSureConfig(typedConfig.sure));
 
 	const bankEntries = Object.entries(typedConfig.banks) as Array<[CompanyTypes, ConfigBank]>;
 	if (bankEntries.length === 0) {
 		throw new Error('No banks configured. Add at least one bank entry to config.json.');
 	}
 
-	const jobs: Array<Promise<BankExportSummary>> = [];
+	const summaries: BankImportSummary[] = [];
+	let hadErrors = false;
 	for (const [companyId, bank] of bankEntries) {
-		jobs.push(queue.add(async (): Promise<BankExportSummary> => {
-			try {
-				return await scrapeAndExportTransactions({companyId, bank, output});
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				console.error('Error exporting bank data:', companyId, message);
-				return {
-					companyId,
-					alias: bank.alias,
-					exportedAccounts: [],
-					error: message,
-				};
-			}
-		}));
+		try {
+			summaries.push(await scrapeAndImportTransactions({companyId, bank, sure}));
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error('Error importing bank data:', companyId, message);
+			summaries.push({
+				alias: bank.alias,
+				companyId,
+				error: message,
+				targets: [],
+			});
+			hadErrors = true;
+		}
 	}
 
-	const summaries = await Promise.all(jobs);
-
-	await writeRunSummary(output.directory, output.pretty, output.format, summaries);
-
-	const exportedAccounts = summaries.reduce(
-		(count: number, summary: BankExportSummary) => count + summary.exportedAccounts.length,
+	const importedTransactions = summaries.reduce(
+		(count: number, summary: BankImportSummary) =>
+			count + summary.targets.reduce((sum, target) => sum + target.importedTransactions, 0),
 		0,
 	);
-	console.log(`Done. Exported ${exportedAccounts} account snapshot(s) to ${output.directory}`);
+	const skippedTransactions = summaries.reduce(
+		(count: number, summary: BankImportSummary) =>
+			count + summary.targets.reduce((sum, target) => sum + target.skippedTransactions, 0),
+		0,
+	);
+	const reconciliations = summaries.reduce(
+		(count: number, summary: BankImportSummary) =>
+			count + summary.targets.filter(target => target.reconciled).length,
+		0,
+	);
+
+	console.log(`Done. Imported ${importedTransactions} transaction(s), skipped ${skippedTransactions}, created ${reconciliations} valuation reconciliation(s).`);
+	if (hadErrors) {
+		process.exitCode = 1;
+	}
 }
 
 async function safeRun() {
 	try {
 		await run();
 	} catch (error) {
-		console.error('Error running exporter:', error);
+		console.error('Error running importer:', error);
 	} finally {
 		if (scheduledTask) {
 			printNextRunTime();
@@ -78,21 +82,6 @@ function printNextRunTime() {
 
 	const nextRun = scheduledTask.getNextRun();
 	console.log('Next run:', moment(nextRun).fromNow(), 'at', moment(nextRun).format('YYYY-MM-DD HH:mm:ss'));
-}
-
-async function writeRunSummary(
-	outputDirectory: string,
-	pretty: boolean,
-	format: string,
-	summaries: BankExportSummary[],
-) {
-	const summaryPath = path.join(outputDirectory, 'index.json');
-	const indentation = pretty ? 2 : undefined;
-	await writeFile(summaryPath, `${JSON.stringify({
-		exportedAt: new Date().toISOString(),
-		format,
-		banks: summaries,
-	}, null, indentation)}\n`);
 }
 
 async function loadConfig() {

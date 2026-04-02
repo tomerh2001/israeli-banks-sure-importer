@@ -1,33 +1,24 @@
 # Israeli Banks Sure Importer
 
-`israeli-banks-sure-importer` is a standalone Israeli bank transaction exporter powered by [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers).
+`israeli-banks-sure-importer` logs into supported Israeli banks with [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers) and imports the scraped activity into [Sure](https://github.com/we-promise/sure) through Sure's public API.
 
-This fork is intentionally no longer tied to Actual Budget. It logs into supported Israeli banks, scrapes account activity, and writes normalized account snapshots to disk as JSON, CSV, or both.
+This project is for Sure, not Actual Budget and not a standalone exporter.
 
 ## What It Does
 
 - Scrapes supported Israeli banks and credit-card providers through `israeli-bank-scrapers`
-- Exports one file per scraped account under a stable output directory
-- Supports JSON, CSV, or JSON+CSV output
+- Creates Sure transactions through `POST /api/v1/transactions`
+- Optionally reconciles Sure account balances through `POST /api/v1/valuations`
+- Matches existing Sure categories and merchants by exact name when possible
+- Creates missing Sure tags when configured to do so
 - Works as a one-shot run or on a cron schedule inside Docker
 
-## Output Layout
+## Important Sure API Limits
 
-Each run writes or refreshes files under the configured `output.directory`.
-
-```text
-output/
-  index.json
-  leumi/
-    123456789.json
-    123456789.csv
-  cal/
-    8538.json
-    8538.csv
-```
-
-- `index.json` contains the top-level run summary.
-- Each account file contains the latest normalized snapshot for that bank account.
+- Sure's public API can list accounts, categories, merchants, and existing imports.
+- Sure's public API can create tags, transactions, and valuations.
+- Sure's public API does not expose provider-style transaction `external_id` fields, so this importer stores a stable import marker in each Sure transaction note and uses that marker for idempotent re-runs.
+- Sure accounts, merchants, and categories must already exist. This importer maps into them; it does not provision the whole Sure budget model from scratch.
 
 ## Configuration
 
@@ -35,23 +26,45 @@ Create a `config.json` file in the project root and validate it against [`config
 
 ```json
 {
-  "output": {
-    "directory": "./output",
-    "format": "json-and-csv",
-    "pretty": true
+  "sure": {
+    "baseUrl": "https://sure.example.com",
+    "apiKey": "sure_api_key",
+    "createMissingTags": true,
+    "defaultTags": [
+      "Imported"
+    ]
   },
   "banks": {
     "leumi": {
       "username": "your-username",
       "password": "your-password",
-      "accounts": "all"
+      "targets": [
+        {
+          "sureAccountName": "Leumi Checking",
+          "accounts": "all",
+          "reconcile": true,
+          "tags": [
+            "Bank Import"
+          ],
+          "categoryMap": {
+            "Dining": "Restaurants",
+            "ATM": "Cash"
+          }
+        }
+      ]
     },
     "cal": {
       "userCode": "123456789",
       "password": "your-password",
-      "accounts": [
-        "8538",
-        "7697"
+      "targets": [
+        {
+          "sureAccountId": "c3d1c26c-61dd-4aa6-a4c9-66de73d79a59",
+          "accounts": [
+            "8538",
+            "7697"
+          ],
+          "reconcile": true
+        }
       ]
     }
   }
@@ -60,28 +73,32 @@ Create a `config.json` file in the project root and validate it against [`config
 
 ### Bank Entries
 
-Each bank entry keeps the credential shape expected by `israeli-bank-scrapers`, plus two optional fields:
+Each bank entry keeps the credential shape expected by `israeli-bank-scrapers`, plus importer-specific fields:
 
-- `alias`: optional folder/display name override for the bank
-- `accounts`: `"all"` or a list of account numbers to export
+- `alias`: optional display name used in logs and import metadata
+- `startDate`: optional ISO date to override the default two-year scrape window
+- `targets`: one or more Sure import targets
 
 Supported company IDs and credential combinations come from the upstream scraper project:
 https://github.com/eshaham/israeli-bank-scrapers
 
-### Output Settings
+### Target Settings
 
-- `directory`: required base directory for exported files
-- `format`: `json`, `csv`, or `json-and-csv`
-- `pretty`: pretty-print JSON output when `true`
+- `sureAccountId` or `sureAccountName`: the existing Sure account to import into
+- `accounts`: `"all"` or a list of scraper `accountNumber` values to map into that Sure account
+- `reconcile`: when `true`, compare the summed scraped balance with the Sure account balance and create a Sure valuation if they differ
+- `tags`: optional Sure tag names or IDs to attach to every imported transaction for that target
+- `categoryMap`: optional map from scraper category names to Sure category names or IDs
 
 ## Environment Overrides
 
 - `SCHEDULE`: cron expression for recurring runs
 - `TIMEOUT`: scraper timeout in minutes, defaults to `15`
 - `CONFIG_PATH`: optional path to a config file, defaults to `./config.json`
-- `OUTPUT_DIRECTORY`: overrides `output.directory`
-- `OUTPUT_FORMAT`: overrides `output.format`
-- `OUTPUT_PRETTY`: overrides `output.pretty`
+- `SURE_BASE_URL`: overrides `sure.baseUrl`
+- `SURE_API_KEY`: overrides `sure.apiKey`
+- `SURE_CREATE_MISSING_TAGS`: overrides `sure.createMissingTags`
+- `SURE_TIMEOUT_MS`: overrides `sure.timeoutMs`
 - `SHOW_BROWSER`: set to `true` to run the browser visibly
 - `VERBOSE`: set to `true` for verbose scraper logs
 
@@ -95,11 +112,10 @@ services:
     environment:
       - TZ=Asia/Jerusalem
       # - SCHEDULE=0 */6 * * *
-      # - OUTPUT_DIRECTORY=/app/output
-      # - OUTPUT_FORMAT=json-and-csv
+      # - SURE_BASE_URL=https://sure.example.com
+      # - SURE_API_KEY=replace-me
     volumes:
       - ./config.json:/app/config.json:ro
-      - ./output:/app/output
       - ./chrome-data:/app/chrome-data
 ```
 
@@ -110,6 +126,9 @@ yarn install
 yarn start
 ```
 
-## Migration Note
+## Import Notes
 
-This project was forked from `israeli-banks-actual-budget-importer` but is not backward compatible with that configuration format. The old `actual` block and account-target mapping were removed on purpose so the fork is clearly a standalone exporter.
+- Imported Sure transactions include a stable note marker so repeated runs stay idempotent even though the public Sure API does not expose provider `external_id` fields.
+- Imported transaction notes also preserve the scraper memo, source bank, source account, and useful source metadata such as pending status or installment details.
+- Merchant matching is exact-name only against merchants that already exist in Sure.
+- Category matching is exact-name unless you override it with `categoryMap`.

@@ -14,7 +14,9 @@
         "@semantic-release/git",
         "@semantic-release/github",
         ["@codedependant/semantic-release-docker", {
-            "dockerImage": "tomerh2001/israeli-banks-sure-importer"
+            "dockerImage": "israeli-banks-sure-importer",
+            "dockerProject": "tomerh2001",
+            "dockerRegistry": "ghcr.io"
         }]
     ]
 }

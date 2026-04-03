@@ -2,8 +2,6 @@
 
 `israeli-banks-sure-importer` logs into supported Israeli banks with [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers) and imports the scraped activity into [Sure](https://github.com/we-promise/sure) through Sure's public API.
 
-This project is for Sure, not Actual Budget and not a standalone exporter.
-
 ## What It Does
 
 - Scrapes supported Israeli banks and credit-card providers through `israeli-bank-scrapers`

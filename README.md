@@ -5,6 +5,7 @@
 ## What It Does
 
 - Scrapes supported Israeli banks and credit-card providers through `israeli-bank-scrapers`
+- Skips pending or provisional transactions so only completed activity lands in Sure
 - Creates Sure transactions through `POST /api/v1/transactions`
 - Optionally reconciles Sure account balances through `POST /api/v1/valuations`
 - Matches existing Sure categories and merchants by exact name when possible
@@ -105,7 +106,7 @@ https://github.com/eshaham/israeli-bank-scrapers
 ```yaml
 services:
   israeli-banks-sure-importer:
-    image: tomerh2001/israeli-banks-sure-importer:latest
+    image: ghcr.io/tomerh2001/israeli-banks-sure-importer:latest
     restart: always
     environment:
       - TZ=Asia/Jerusalem
@@ -121,9 +122,9 @@ services:
 
 GitHub Actions validates every push and pull request, then runs semantic-release on `main` and `develop`.
 
-- The release job publishes the Docker image `tomerh2001/israeli-banks-sure-importer`
-- It uses the built-in GitHub Actions token for GitHub release/tag work
-- It only requires Docker Hub secrets: `DOCKER_REGISTRY_USER` and `DOCKER_REGISTRY_PASSWORD`
+- The release job publishes the Docker image `ghcr.io/tomerh2001/israeli-banks-sure-importer`
+- It uses the built-in GitHub Actions token for both GitHub release/tag work and GHCR image publishing
+- It does not require separate Docker registry secrets
 
 ## Local Run
 
@@ -135,7 +136,7 @@ yarn start
 ## Import Notes
 
 - Imported Sure transactions include a stable note marker so repeated runs stay idempotent even though the public Sure API does not expose provider `external_id` fields.
-- Imported transaction notes also preserve the scraper memo, source bank, source account, and useful source metadata such as pending status or installment details.
+- Imported transaction notes preserve the scraper memo, source bank, source account, and useful source metadata such as processed dates, original currency values, and installment details.
 - Merchant matching is exact-name only against merchants that already exist in Sure.
 - Category matching is exact-name unless you override it with `categoryMap`.
 - When `reconcile` is enabled, the importer now waits for Sure to reflect the valuation and triggers one follow-up Sure sync if the balance cache is still stale after the transaction import finishes.

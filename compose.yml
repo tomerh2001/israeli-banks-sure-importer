@@ -1,6 +1,6 @@
 services:
   israeli-banks-sure-importer:
-    image: tomerh2001/israeli-banks-sure-importer:latest
+    image: ghcr.io/tomerh2001/israeli-banks-sure-importer:latest
     container_name: israeli-banks-sure-importer
     cap_add:
       - SYS_ADMIN

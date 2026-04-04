@@ -30,7 +30,7 @@ jobs:
 
       - name: Checkout
         if: ${{ steps.snyk-gate.outputs.enabled == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
         if: ${{ steps.snyk-gate.outputs.enabled == 'true' }}

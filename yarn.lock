@@ -95,9 +95,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@codedependant/semantic-release-docker@npm:^7.0.0":
-  version: 7.0.0
-  resolution: "@codedependant/semantic-release-docker@npm:7.0.0"
+"@codedependant/semantic-release-docker@npm:^8.0.0":
+  version: 8.0.0
+  resolution: "@codedependant/semantic-release-docker@npm:8.0.0"
   dependencies:
     "@actions/core": "npm:^3.0.0"
     "@semantic-release/error": "npm:^4.0.0"
@@ -106,7 +106,7 @@ __metadata:
     handlebars: "npm:^4.7.9"
     object-hash: "npm:^3.0.0"
     semver: "npm:^7.3.2"
-  checksum: 10c0/d528f36ac23836418290597f835cc85610370e468c172325211c55cb062c30e72045430af04e030ee46c280b6ef2fa40cf841a6137e8c3c89b26f4d5de628c9f
+  checksum: 10c0/26c9d57bc74ea1f62343864226a67062048ca4a13ca7370c7b5d231573d2f5322190c40b350bdc795c88fec471e832d6b2e39a69e319af36b3c6d40434edfc94
   languageName: node
   linkType: hard
 
@@ -4893,7 +4893,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "israeli-banks-sure-importer@workspace:."
   dependencies:
-    "@codedependant/semantic-release-docker": "npm:^7.0.0"
+    "@codedependant/semantic-release-docker": "npm:^8.0.0"
     "@semantic-release/changelog": "npm:^7.0.0"
     "@semantic-release/commit-analyzer": "npm:^13.0.1"
     "@semantic-release/git": "npm:^11.0.0"
